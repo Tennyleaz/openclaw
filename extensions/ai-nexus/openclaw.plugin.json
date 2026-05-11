@@ -1,0 +1,9 @@
+{
+  "id": "ai-nexus",
+  "channels": ["ai-nexus"],
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {}
+  }
+}
