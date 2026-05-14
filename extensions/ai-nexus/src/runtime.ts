@@ -18,7 +18,7 @@ export function getAiNexusApiKey(): string | undefined {
   if (!runtime) {
     return process.env.AINEXUS_API_KEY;
   }
-  const cfg = runtime.config.loadConfig();
+  const cfg = runtime.config.current();
   const channelCfg = (cfg.channels?.["ai-nexus"] ?? {}) as Record<string, unknown>;
   const configKey =
     typeof channelCfg.aiNexusApiKey === "string" ? channelCfg.aiNexusApiKey : undefined;
