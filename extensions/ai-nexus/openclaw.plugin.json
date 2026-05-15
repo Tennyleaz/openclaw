@@ -1,6 +1,15 @@
 {
   "id": "ai-nexus",
   "channels": ["ai-nexus"],
+  "contracts": {
+    "tools": [
+      "ai-nexus-workflow-list",
+      "ai-nexus-workflow-run",
+      "ai-nexus-file-download",
+      "ai-nexus-file-upload",
+      "ai-nexus-mcp-tool"
+    ]
+  },
   "configSchema": {
     "type": "object",
     "additionalProperties": false,

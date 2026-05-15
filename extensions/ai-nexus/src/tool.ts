@@ -471,7 +471,7 @@ const mcpSchema = Type.Object({
 type McpParams = Static<typeof mcpSchema>;
 
 const aiNexusMcpTool: AnyAgentTool = {
-  name: "ainexus-mcp-tool",
+  name: "ai-nexus-mcp-tool",
   label: "AI Nexus MCP Tool",
   description:
     "Call MCP (Model Context Protocol) server tools. Use action=list to see available tools, then action=call to invoke them.",
