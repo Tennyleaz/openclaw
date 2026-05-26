@@ -12,10 +12,10 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
-    "openclaw": ">=2026.5.7"
+    "openclaw": ">=2026.5.18"
   },
   "peerDependencies": {
-    "openclaw": ">=2026.5.7"
+    "openclaw": ">=2026.5.18"
   },
   "peerDependenciesMeta": {
     "openclaw": {
