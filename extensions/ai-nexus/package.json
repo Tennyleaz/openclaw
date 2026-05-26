@@ -1,0 +1,42 @@
+{
+  "name": "@openclaw/ai-nexus",
+  "version": "0.0.2",
+  "description": "AI Nexus channel plugin for OpenClaw",
+  "type": "module",
+  "dependencies": {
+    "@mariozechner/pi-agent-core": "^0.69.0",
+    "@mariozechner/pi-ai": "^0.69.0",
+    "@microsoft/signalr": "^10.0.0",
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@sinclair/typebox": "^0.34.49",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "openclaw": ">=2026.5.7"
+  },
+  "peerDependencies": {
+    "openclaw": ">=2026.5.7"
+  },
+  "peerDependenciesMeta": {
+    "openclaw": {
+      "optional": true
+    }
+  },
+  "openclaw": {
+    "extensions": [
+      "./index.ts"
+    ],
+    "channel": {
+      "id": "ai-nexus",
+      "label": "AI Nexus",
+      "selectionLabel": "AI Nexus (Webhook)",
+      "docsPath": "/channels/ai-nexus",
+      "docsLabel": "ai-nexus",
+      "blurb": "Receive text messages via HTTP webhook and forward them to the OpenClaw agent.",
+      "order": 95
+    },
+    "install": {
+      "localPath": "extensions/ai-nexus"
+    }
+  }
+}
