@@ -14,6 +14,10 @@
   "devDependencies": {
     "openclaw": ">=2026.5.18"
   },
+  "scripts": {
+    "build": "node scripts/build.mjs --write-package",
+    "build:check": "node scripts/build.mjs --check"
+  },
   "peerDependencies": {
     "openclaw": ">=2026.5.18"
   },
@@ -26,6 +30,7 @@
     "extensions": [
       "./index.ts"
     ],
+    "setupEntry": "./setup-entry.ts",
     "channel": {
       "id": "ai-nexus",
       "label": "AI Nexus",
@@ -37,6 +42,10 @@
     },
     "install": {
       "localPath": "extensions/ai-nexus"
-    }
+    },
+    "runtimeExtensions": [
+      "./dist/index.js"
+    ],
+    "runtimeSetupEntry": "./dist/setup-entry.js"
   }
 }

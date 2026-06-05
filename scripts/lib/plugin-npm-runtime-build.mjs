@@ -176,7 +176,7 @@ export function resolvePluginNpmRuntimePackagePeerMetadata(plan) {
   };
 }
 
-export function resolvePluginNpmRuntimeBuildPlan(params) {
+export function resolveExtensionRuntimeBuildPlan(params) {
   const repoRoot = path.resolve(params.repoRoot ?? ".");
   const packageDir = resolvePackageDir(repoRoot, params.packageDir);
   const packageJsonPath = path.join(packageDir, "package.json");
@@ -188,7 +188,7 @@ export function resolvePluginNpmRuntimeBuildPlan(params) {
   const rootPackageJson = fs.existsSync(rootPackageJsonPath)
     ? readJsonFile(rootPackageJsonPath)
     : undefined;
-  if (!isPublishablePluginPackage(packageJson)) {
+  if (params.requirePublishable && !isPublishablePluginPackage(packageJson)) {
     return null;
   }
 
@@ -240,8 +240,64 @@ export function resolvePluginNpmRuntimeBuildPlan(params) {
   };
 }
 
-export async function buildPluginNpmRuntime(params) {
-  const plan = resolvePluginNpmRuntimeBuildPlan(params);
+export function resolvePluginNpmRuntimeBuildPlan(params) {
+  return resolveExtensionRuntimeBuildPlan({ ...params, requirePublishable: true });
+}
+
+function writeJsonFile(filePath, value) {
+  fs.writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
+}
+
+export function resolveAugmentedExtensionPackageJson(params) {
+  const repoRoot = path.resolve(params.repoRoot ?? ".");
+  const packageDir = resolvePackageDir(repoRoot, params.packageDir);
+  const packageJsonPath = path.join(packageDir, "package.json");
+  const plan = resolveExtensionRuntimeBuildPlan(params);
+  if (!plan) {
+    return {
+      packageJsonPath,
+      packageDir,
+      repoRoot,
+      changed: false,
+      packageJson: undefined,
+      reason: "no-runtime-build",
+    };
+  }
+
+  const packageJson = {
+    ...plan.packageJson,
+    openclaw: {
+      ...plan.packageJson.openclaw,
+      runtimeExtensions: plan.runtimeExtensions,
+      ...(plan.runtimeSetupEntry ? { runtimeSetupEntry: plan.runtimeSetupEntry } : {}),
+    },
+  };
+  const changed = JSON.stringify(packageJson) !== JSON.stringify(plan.packageJson);
+  return {
+    packageJsonPath,
+    packageDir,
+    repoRoot,
+    changed,
+    packageJson,
+    pluginDir: plan.pluginDir,
+    plan,
+    reason: changed ? "runtime-entries" : "unchanged",
+  };
+}
+
+export function writeExtensionRuntimePackageJson(params) {
+  const resolved = resolveAugmentedExtensionPackageJson(params);
+  if (!resolved.packageJson) {
+    return resolved;
+  }
+  if (resolved.changed) {
+    writeJsonFile(resolved.packageJsonPath, resolved.packageJson);
+  }
+  return resolved;
+}
+
+export async function buildExtensionRuntime(params) {
+  const plan = resolveExtensionRuntimeBuildPlan(params);
   if (!plan) {
     return null;
   }
@@ -269,6 +325,10 @@ export async function buildPluginNpmRuntime(params) {
     ...plan,
     copiedStaticAssets,
   };
+}
+
+export async function buildPluginNpmRuntime(params) {
+  return buildExtensionRuntime({ ...params, requirePublishable: true });
 }
 
 function parseArgs(argv) {
