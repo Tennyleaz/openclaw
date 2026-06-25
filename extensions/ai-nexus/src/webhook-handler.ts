@@ -65,11 +65,22 @@ function parseJsonPayload(body: string): AiNexusWebhookPayload | null {
     typeof parsed.signalrGroupId === "string" ? parsed.signalrGroupId.trim() : undefined;
   const signalrToken =
     typeof parsed.signalrToken === "string" ? parsed.signalrToken.trim() : undefined;
+  const threadId = typeof parsed.threadId === "string" ? parsed.threadId.trim() : undefined;
 
   if (!webhookToken || !senderId || !text) {
     return null;
   }
-  return { webhookToken, senderId, text, senderName, sync, stream, signalrGroupId, signalrToken };
+  return {
+    webhookToken,
+    senderId,
+    text,
+    senderName,
+    sync,
+    stream,
+    signalrGroupId,
+    signalrToken,
+    threadId,
+  };
 }
 
 /**
@@ -143,6 +154,7 @@ export function createWebhookHandler(deps: WebhookHandlerDeps) {
     setAiNexusSignalrContext(account.accountId, payload.senderId, {
       groupId: payload.signalrGroupId,
       token: payload.signalrToken,
+      threadId: payload.threadId,
     });
 
     const preview = payload.text.length > 100 ? `${payload.text.slice(0, 100)}...` : payload.text;
@@ -161,8 +173,12 @@ export function createWebhookHandler(deps: WebhookHandlerDeps) {
     };
     //console.log("deliverMsg", deliverMsg);
     const signalrCallbackContext =
-      payload.signalrGroupId && payload.signalrToken
-        ? { groupId: payload.signalrGroupId, token: payload.signalrToken }
+      payload.signalrGroupId && payload.signalrToken && payload.threadId
+        ? {
+            groupId: payload.signalrGroupId,
+            token: payload.signalrToken,
+            threadId: payload.threadId,
+          }
         : undefined;
     //const hasSignalrCallback = Boolean(signalrCallbackContext);
 
@@ -253,21 +269,27 @@ export function createWebhookHandler(deps: WebhookHandlerDeps) {
 
 export async function forwardSignalrEvent(
   event: DeliverEvent,
-  callback: { groupId: string; token: string },
+  callback: { groupId: string; token: string; threadId: string },
   log?: {
     warn: (...args: unknown[]) => void;
   },
 ) {
-  const { groupId, token } = callback;
+  const { groupId, token, threadId } = callback;
   let ok = false;
   if (event.type === "text") {
-    ok = await sendMessage(event.type, event.text, token, groupId);
+    ok = await sendMessage(event.type, event.text, token, groupId, threadId);
   } else if (event.type === "tool") {
-    ok = await sendMessage(event.type, event.toolName, token, groupId);
+    ok = await sendMessage(event.type, event.toolName, token, groupId, threadId);
   } else if (event.type === "media") {
-    ok = await sendMediaFile(event.url, token, groupId);
+    ok = await sendMediaFile(event.url, token, groupId, threadId);
   } else if (event.type === "approval") {
-    const messageId = await sendExecApproval(event.approvalId, event.command, token, groupId);
+    const messageId = await sendExecApproval(
+      event.approvalId,
+      event.command,
+      token,
+      groupId,
+      threadId,
+    );
     ok = !!messageId;
   }
 

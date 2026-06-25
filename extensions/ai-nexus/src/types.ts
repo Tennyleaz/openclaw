@@ -62,10 +62,13 @@ export interface AiNexusWebhookPayload {
   signalrGroupId?: string;
   /** Bearer token used for outbound SignalR callback POST requests. */
   signalrToken?: string;
+  /** Topic thread id within the signalr group channel. */
+  threadId?: string;
 }
 
 export interface SendMessageRequest {
   messageId: string;
+  threadId: string;
   kind: "text" | "file" | "tool" | "approval";
   text?: string;
   fileId?: string;
@@ -75,6 +78,7 @@ export interface SendMessageRequest {
 export interface MessageDto {
   messageId: string;
   groupId: string;
+  threadId: string;
   senderId: string;
   kind: "text" | "file" | "tool" | "approval";
   text?: string;
@@ -111,15 +115,17 @@ export interface WebhookHandlerDeps {
   };
 }
 
-/** Group id and token, which is recorded in a map or from environment variable. */
+/** Group id, token, and thread id recorded in a map or from environment variable. */
 export type AiNexusSignalRContext = {
   groupId?: string;
   token?: string;
+  threadId?: string;
 };
 
 export type AiNexusSignalrInboundMessage = {
   messageId: string;
   groupId: string;
+  threadId: string;
   senderId: string;
   kind: "text" | "file" | "tool" | "approval";
   text?: string;

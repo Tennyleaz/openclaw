@@ -298,12 +298,18 @@ export const aiNexusPlugin: ChannelPlugin<ResolvedAiNexusAccount> = {
         .info(`[ai-nexus] outbound to ${to}, threadId ${threadId}: ${text.slice(0, 100)}`);
       if (text) {
         const signalrContext = getAiNexusSignalrContext(accountId ?? DEFAULT_ACCOUNT_ID, to);
-        if (!signalrContext?.groupId || !signalrContext.token) {
+        if (!signalrContext?.groupId || !signalrContext.token || !signalrContext.threadId) {
           rt.logging
             .getChildLogger()
-            .warn("[ai-nexus] sendText skipped because no signalr groupId or token.");
+            .warn("[ai-nexus] sendText skipped because no signalr groupId, token, or threadId.");
         } else {
-          await sendMessage("text", text, signalrContext.token, signalrContext.groupId);
+          await sendMessage(
+            "text",
+            text,
+            signalrContext.token,
+            signalrContext.groupId,
+            signalrContext.threadId,
+          );
         }
       }
       return { channel: CHANNEL_ID, messageId: `ainx-${Date.now()}`, chatId: to };
@@ -329,12 +335,26 @@ export const aiNexusPlugin: ChannelPlugin<ResolvedAiNexusAccount> = {
         collector.onEvent?.({ type: "text", text: text });
       }
       const signalrContext = getAiNexusSignalrContext(accountId ?? DEFAULT_ACCOUNT_ID, to);
-      if (text && signalrContext?.groupId && signalrContext.token) {
-        await sendMessage("text", text, signalrContext.token, signalrContext.groupId);
+      if (text && signalrContext?.groupId && signalrContext.token && signalrContext.threadId) {
+        await sendMessage(
+          "text",
+          text,
+          signalrContext.token,
+          signalrContext.groupId,
+          signalrContext.threadId,
+        );
       }
-      if (mediaUrl && signalrContext?.groupId && signalrContext.token) {
-        await sendMediaFile(mediaUrl, signalrContext.token, signalrContext.groupId);
-      } else if (mediaUrl && (!signalrContext?.groupId || !signalrContext.token)) {
+      if (mediaUrl && signalrContext?.groupId && signalrContext.token && signalrContext.threadId) {
+        await sendMediaFile(
+          mediaUrl,
+          signalrContext.token,
+          signalrContext.groupId,
+          signalrContext.threadId,
+        );
+      } else if (
+        mediaUrl &&
+        (!signalrContext?.groupId || !signalrContext.token || !signalrContext.threadId)
+      ) {
         rt.logging
           .getChildLogger()
           .warn("[ai-nexus] sendMedia skipped media callback because no signalr groupId or token.");
@@ -368,13 +388,14 @@ export const aiNexusPlugin: ChannelPlugin<ResolvedAiNexusAccount> = {
           : undefined;
       const groupId = runtimeContext?.groupId;
       const token = runtimeContext?.token;
-      if (!approvalId || !groupId || !token) {
+      const threadId = runtimeContext?.threadId;
+      if (!approvalId || !groupId || !token || !threadId) {
         rt.logging
           .getChildLogger()
-          .info("[ai-nexus] sendPayload skipped because no approvalId, groupId, or token.");
+          .info("[ai-nexus] sendPayload skipped because no approvalId, groupId, token, or threadId.");
         return { channel: CHANNEL_ID, messageId: "empty" };
       }
-      const messageId = await sendExecApproval(approvalId, command, token, groupId);
+      const messageId = await sendExecApproval(approvalId, command, token, groupId, threadId);
       if (messageId) {
         rt.logging
           .getChildLogger()
@@ -499,11 +520,16 @@ export const aiNexusPlugin: ChannelPlugin<ResolvedAiNexusAccount> = {
           setAiNexusSignalrContext(DEFAULT_ACCOUNT_ID, signalrMessage.senderId, {
             groupId: signalrMessage.groupId,
             token: signalrMessage.token,
+            threadId: signalrMessage.threadId,
           });
 
           const callbackContext =
-            signalrMessage.groupId && signalrMessage.token
-              ? { groupId: signalrMessage.groupId, token: signalrMessage.token }
+            signalrMessage.groupId && signalrMessage.token && signalrMessage.threadId
+              ? {
+                  groupId: signalrMessage.groupId,
+                  token: signalrMessage.token,
+                  threadId: signalrMessage.threadId,
+                }
               : undefined;
           let warnedMissingCallbackContext = false;
           await deliverInboundMessage(

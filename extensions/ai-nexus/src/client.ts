@@ -53,8 +53,14 @@ function normalizeSignalRId(value: string): string {
   return value.trim();
 }
 
-function buildSignalRContextKey(accountId: string, senderId: string): string {
-  return `${normalizeSignalRId(accountId)}:${normalizeAiNexusHandle(senderId)}`;
+function buildSignalRContextKey(accountId: string, senderId: string, groupId?: string, threadId?: string): string {
+  const parts = [
+    normalizeSignalRId(accountId),
+    normalizeAiNexusHandle(senderId),
+    groupId?.trim() ?? "",
+    threadId?.trim() ?? "",
+  ];
+  return parts.join(":");
 }
 
 /**
@@ -71,13 +77,19 @@ export function setAiNexusSignalrContext(
 ): void {
   const normalizedAccountId = normalizeSignalRId(accountId);
   const normalizedSenderId = normalizeAiNexusHandle(senderId);
-  const key = buildSignalRContextKey(normalizedAccountId, normalizedSenderId);
+  const key = buildSignalRContextKey(
+    normalizedAccountId,
+    normalizedSenderId,
+    context.groupId,
+    context.threadId,
+  );
   const normalizedContext: AiNexusSignalRContext = {
     groupId: context.groupId?.trim(),
     token: context.token?.trim(),
+    threadId: context.threadId?.trim(),
   };
 
-  if (!normalizedContext.groupId && !normalizedContext.token) {
+  if (!normalizedContext.groupId && !normalizedContext.token && !normalizedContext.threadId) {
     aiNexusSignalRContext.delete(key);
     return;
   }
@@ -94,11 +106,23 @@ export function setAiNexusSignalrContext(
 export function getAiNexusSignalrContext(
   accountId: string,
   senderId: string,
+  groupId?: string,
+  threadId?: string,
 ): AiNexusSignalRContext | undefined {
-  const key = buildSignalRContextKey(accountId, senderId);
+  const key = buildSignalRContextKey(accountId, senderId, groupId, threadId);
   const value = aiNexusSignalRContext.get(key);
   if (value) {
     return value;
+  }
+
+  // Fallback: match the latest context for this sender when thread id is omitted.
+  if (!threadId) {
+    const prefix = `${normalizeSignalRId(accountId)}:${normalizeAiNexusHandle(senderId)}:`;
+    for (const [mapKey, mapValue] of [...aiNexusSignalRContext.entries()].reverse()) {
+      if (mapKey.startsWith(prefix)) {
+        return mapValue;
+      }
+    }
   }
   // Also try get group id and token from environment variables.
   const signalrGroupId = process.env.AINEXUS_SIGNALR_GROUP_ID;
@@ -117,9 +141,11 @@ export async function sendMessage(
   text: string,
   token: string,
   groupId: string,
+  threadId: string,
 ): Promise<boolean> {
   const body: SendMessageRequest = {
     messageId: crypto.randomUUID(),
+    threadId,
     kind: type,
     text: text,
   };
@@ -131,6 +157,7 @@ export async function sendMediaFile(
   fileUrl: string,
   token: string,
   groupId: string,
+  threadId: string,
 ): Promise<boolean> {
   const apiKey = getAiNexusApiKey();
   if (!apiKey) {
@@ -237,6 +264,7 @@ export async function sendMediaFile(
 
   const body: SendMessageRequest = {
     messageId: crypto.randomUUID(),
+    threadId,
     kind: "file",
     fileId: fileId,
   };
@@ -257,9 +285,14 @@ export async function sendExecApproval(
   command: string,
   token: string,
   groupId: string | undefined,
+  threadId: string | undefined,
 ) {
   if (!groupId) {
     console.error("sendExecApproval has no groupId!");
+    return undefined;
+  }
+  if (!threadId) {
+    console.error("sendExecApproval has no threadId!");
     return undefined;
   }
 
@@ -269,6 +302,7 @@ export async function sendExecApproval(
   };
   const body: SendMessageRequest = {
     messageId: crypto.randomUUID(),
+    threadId,
     kind: "approval",
     text: JSON.stringify(approvalData),
   };
@@ -371,7 +405,8 @@ function normalizeInboundMessage(dto: MessageDto): AiNexusSignalrInboundMessage 
   const groupId = dto?.groupId?.trim();
   const messageId = dto?.messageId?.trim();
   const kind = dto?.kind;
-  if (!senderId || !groupId || !messageId || !kind) {
+  const threadId = dto?.threadId?.trim();
+  if (!senderId || !groupId || !messageId || !kind || !threadId) {
     return undefined;
   }
 
@@ -382,6 +417,7 @@ function normalizeInboundMessage(dto: MessageDto): AiNexusSignalrInboundMessage 
     messageId,
     senderId,
     groupId,
+    threadId,
     kind,
     text,
     fileId,
